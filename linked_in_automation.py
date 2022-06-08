@@ -45,7 +45,7 @@ def save_cookies(accept_cookie):
 
 def linkedin_login(web_driver):
     if validating_locator_availability(web_driver, By.CSS_SELECTOR, sign_in_btn):
-        username_txt = input("Enter the Username")
+        username_txt = input("Enter the Username: ")
         password_txt = getpass.getpass("Enter your password: ")
         web_driver.find_element(By.ID, username_input).send_keys(username_txt)
         web_driver.find_element(By.ID, password_input).send_keys(password_txt)
@@ -100,11 +100,16 @@ def applying_for_job(web_driver, modify_resume_bool):
                 if modify_resume_bool:
                     web_driver.find_element(By.XPATH, remove_resume_btn).click()
                     web_driver.find_element(By.CLASS_NAME, "jobs-document-upload__upload-button").click()
-                web_driver.find_element(By.XPATH, '//button[contains(@aria-label,"Review")]').click()
+                try:
+                    web_driver.find_element(By.XPATH, next_btn).click()
+                except:
+                    web_driver.find_element(By.XPATH, '//button[contains(@aria-label,"Review")]').click()
                 additional_questions = web_driver.find_element(By.XPATH, '//h3[contains(@class,"t-16 t-bold")]')
                 if additional_questions:
                     print("User need to enter the answers manually")
                     driver.execute_script("alert('Enter the answers Manually and do not Click Enter')")
+                    time.sleep(50)
+                    web_driver.find_element(By.XPATH, '//button[contains(@aria-label,"Review")]').click()
                 user_name = web_driver.find_element(By.CSS_SELECTOR, "div.artdeco-entity-lockup__title.ember-view").text
                 assert "Surya Teja Tadaka" in user_name
                 web_elements_review = web_driver.find_elements(By.CSS_SELECTOR, "div.t-14.white-space-pre-line")
@@ -116,6 +121,7 @@ def applying_for_job(web_driver, modify_resume_bool):
                 assert "9494719275" in result_set
                 assert "India (+91)" in result_set
             job_applied_status = True
+            time.sleep(5)
             close_assessment = web_driver.find_element(By.XPATH, "//button[contains(@class, 'artdeco-modal__dismiss')]")
             if close_assessment:
                 time.sleep(5)
@@ -147,7 +153,7 @@ def appending_data_to_csv(job_title, job_description, job_applied_status):
 
 if __name__ == '__main__':
     # try:
-    cookie = False
+    cookie = True
     driver = save_cookies(accept_cookie=cookie)
     linkedin_login(driver)
     job_search(driver)
