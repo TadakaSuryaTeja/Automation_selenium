@@ -1,0 +1,15 @@
+selenium
+webdriver_manager
+beautifulsoup4
+black
+flake8==4.0.1
+mypy==0.931
+pylint==2.12.2
+pep8-naming==0.11.1
+autopep8
+isort==5.10.1
+yapf
+pre-commit==2.17.0
+click==8.0.2
+pytest
+lxml
