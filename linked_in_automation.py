@@ -18,7 +18,7 @@ sign_in_btn = 'a.nav__button-secondary'
 username_input = 'username'
 password_input = 'password'
 submit_btn = '.btn__primary--large'
-jobs_btn = 'ember19'
+jobs_btn = '//span[text()="Jobs"]'
 job_search_by_skill_btn = "//input[contains(@id, 'jobs-search-box-keyword')]"
 job_search_place = "//input[contains(@id, 'jobs-search-box-location')]"
 job_card_container = "jobs-search-results__list-item"
