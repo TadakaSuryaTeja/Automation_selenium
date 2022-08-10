@@ -18,3 +18,9 @@ numpy
 pyautogui
 instabot
 wifi_qrcode_generator
+faker
+feather-format
+pandas
+snoop
+icecream
+varname
