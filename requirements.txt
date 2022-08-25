@@ -1,4 +1,4 @@
-selenium==4.4.3
+selenium
 webdriver_manager
 beautifulsoup4
 black
