@@ -15,7 +15,7 @@ stock_name_list = ["ADANIPORTS", "ASIANPAINT", "RELIANCE", "ADANIPOWER", "AXISBA
 def fetch_and_save_csv(stock_name):
     try:
         url = f'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={stock_name}.BSE&outputsize' \
-              f'=full&apikey=XI5SAW17MK55MW80 '
+              f'=full&apikey='
 
         r = requests.get(url)
         data = r.json()
