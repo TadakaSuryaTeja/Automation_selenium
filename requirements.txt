@@ -24,3 +24,4 @@ pandas
 snoop
 icecream
 varname
+tqdm
