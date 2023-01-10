@@ -25,3 +25,5 @@ snoop
 icecream
 varname
 tqdm
+html2text
+codecarbon
