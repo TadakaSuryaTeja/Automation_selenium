@@ -2,10 +2,29 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
+import re
 
 st.set_page_config(page_title="Job Tracker Dashboard", layout="wide")
 
 st.title("🧑‍💻 Job Tracker & Scraping Insights")
+
+
+# Helper function to extract numeric values from Pay column
+def extract_pay_range(pay_str):
+    # Remove non-numeric characters and split by '-'
+    pay_str = re.sub(r'[^\d\-\.]', '', pay_str)  # Keep only digits, hyphens, and periods
+    pay_range = pay_str.split('-')
+
+    # If there's a range, return the min and max values, else return the same value twice
+    if len(pay_range) == 2:
+        min_pay = float(pay_range[0].strip())
+        max_pay = float(pay_range[1].strip())
+        return min_pay, max_pay
+    elif len(pay_range) == 1:
+        return float(pay_range[0].strip()), float(pay_range[0].strip())
+    else:
+        return 0, 0  # If parsing fails, return 0, 0
+
 
 # Tabs for navigation
 tab1, tab2 = st.tabs(["📊 Application Tracker", "🔍 Scraped Job Listings"])
@@ -67,6 +86,9 @@ with tab2:
         # Clean column names for consistency (optional)
         df.columns = df.columns.str.strip()
 
+        # Clean and extract pay ranges
+        df["Pay Min"], df["Pay Max"] = zip(*df["Pay"].apply(extract_pay_range))
+
         # Show top-level summary
         col1, col2, col3 = st.columns(3)
         col1.metric("🧾 Total Jobs", len(df))
@@ -76,15 +98,38 @@ with tab2:
         # Sidebar filters
         st.sidebar.header("📍 Scraping Filters")
         selected_company = st.sidebar.multiselect("Company", df["Company"].unique(), default=df["Company"].unique())
-        selected_status = st.sidebar.multiselect("Application Status", df["Application Status"].unique(), default=df["Application Status"].unique())
-        selected_work_mode = st.sidebar.multiselect("Work Mode", df["Work Mode"].unique(), default=df["Work Mode"].unique())
+        selected_status = st.sidebar.multiselect("Application Status", df["Application Status"].unique(),
+                                                 default=df["Application Status"].unique())
+        selected_work_mode = st.sidebar.multiselect("Work Mode", df["Work Mode"].unique(),
+                                                    default=df["Work Mode"].unique())
+        selected_location = st.sidebar.multiselect("Location", df["Location"].unique(), default=df["Location"].unique())
+        selected_employment_type = st.sidebar.multiselect("Employment Type", df["Employment Type"].unique(),
+                                                          default=df["Employment Type"].unique())
+
+        # Adding pay range filter
+        min_pay, max_pay = st.sidebar.slider("Select Pay Range",
+                                             min_value=int(df["Pay Min"].min()),
+                                             max_value=int(df["Pay Max"].max()),
+                                             value=(int(df["Pay Min"].min()), int(df["Pay Max"].max())))
+
+        # Adding date range filter for scraping date
+        start_date, end_date = st.sidebar.date_input(
+            "Select Scraping Date Range",
+            [df["Scraped On"].min().date(), df["Scraped On"].max().date()]
+        )
 
         # Apply filters
         filtered_df = df[
             df["Company"].isin(selected_company) &
             df["Application Status"].isin(selected_status) &
-            df["Work Mode"].isin(selected_work_mode)
-        ]
+            df["Work Mode"].isin(selected_work_mode) &
+            df["Location"].isin(selected_location) &
+            df["Employment Type"].isin(selected_employment_type) &
+            df["Pay Min"].between(min_pay, max_pay) &
+            df["Pay Max"].between(min_pay, max_pay) &
+            (df["Scraped On"].dt.date >= pd.to_datetime(start_date).date()) &  # Ensure comparison with .date()
+            (df["Scraped On"].dt.date <= pd.to_datetime(end_date).date())  # Ensure comparison with .date()
+            ]
 
         st.markdown(f"### 🎯 Filtered Jobs ({len(filtered_df)})")
         st.dataframe(filtered_df[[

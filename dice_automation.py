@@ -14,7 +14,7 @@ from datetime import datetime
 
 # ------------------------------ CONFIG ------------------------------
 USER_EMAIL = "suryateja233@gmail.com"
-USER_PASSWORD = "DevilReturns@006"
+USER_PASSWORD = ""
 SEARCH_KEYWORDS = "aws python"
 
 # ---------------------------- LOCATORS ------------------------------
@@ -228,6 +228,7 @@ def apply_to_job(driver):
         username.send_keys(USER_EMAIL)
         password.send_keys(USER_PASSWORD)
         driver.find_element(By.CSS_SELECTOR, SELECTORS['login_submit']).click()
+        time.sleep(5)
     except Exception as ex:
         print(f"Already logged in or no login required: {ex}")
 
