@@ -49,11 +49,12 @@ def dice_loging(web_driver):
         EC.presence_of_element_located((By.CSS_SELECTOR, '#typeaheadInput'))
     )
     search_input.clear()
-    search_input.send_keys('python')
+    search_input.send_keys('aws python')
     web_driver.find_element(By.CSS_SELECTOR, '#submitSearch-button').click()
     web_driver.implicitly_wait(10)
     main_window_handle = web_driver.current_window_handle
-    for i in range(3):
+    for i in range(300):
+        time.sleep(10)
         list_of_jobs = web_driver.find_elements(By.CSS_SELECTOR, '[data-cy="card-title-link"]')
         for jobs in list_of_jobs:
             try:
@@ -72,7 +73,7 @@ def dice_loging(web_driver):
                         username.send_keys("suryateja233@gmail.com")
                     if password:
                         web_driver.execute_script("arguments[0].scrollIntoView(true);", password)
-                        password.send_keys("")
+                        password.send_keys("DevilReturns@006")
                     WebDriverWait(web_driver, 10).until(
                         EC.element_to_be_clickable((By.CSS_SELECTOR, '[data-cy="login-submit"] button'))
                     ).click()
@@ -113,6 +114,7 @@ def dice_loging(web_driver):
                 time.sleep(5)
             except Exception as ex:
                 web_driver.close()
+                time.sleep(2)
                 web_driver.switch_to.window(main_window_handle)
                 time.sleep(5)
                 print(f"failed{ex}{jobs}")
