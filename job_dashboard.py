@@ -115,18 +115,6 @@ with tab2:
             timeline_data = df.groupby(df['Applied Date'].dt.date).size()
             st.line_chart(timeline_data)
 
-        if 'Skills' in df.columns:
-            st.markdown("#### ☁️ Common Skills")
-            skills_text = ", ".join(df['Skills'].dropna().astype(str))
-            if skills_text:
-                wordcloud = WordCloud(width=1000, height=400, background_color='white').generate(skills_text)
-                fig, ax = plt.subplots(figsize=(12, 4))
-                ax.imshow(wordcloud, interpolation='bilinear')
-                ax.axis("off")
-                st.pyplot(fig)
-            else:
-                st.info("No skills data available for word cloud.")
-
         if 'Pay' in df.columns and 'Location' in df.columns:
             st.markdown("#### 💼 Pay vs Location")
             fig, ax = plt.subplots(figsize=(10, 6))
