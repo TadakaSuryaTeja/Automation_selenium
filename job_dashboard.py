@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
+import seaborn as sns
 import re
 
 st.set_page_config(page_title="Job Tracker Dashboard", layout="wide")
@@ -69,6 +70,10 @@ with tab1:
 
     st.markdown("---")
 
+# --------- TAB 2: Scraped Job Listings Dashboard ----------
+with tab2:
+    st.subheader("🔎 Scraped Job Listings Dashboard")
+
     st.subheader("📂 Upload Your Job Tracker CSV")
     uploaded_file = st.file_uploader("Upload CSV", type=["csv"], key="app_tracker")
     if uploaded_file:
@@ -79,6 +84,7 @@ with tab1:
         st.dataframe(df_uploaded, use_container_width=True)
         st.success("CSV uploaded and displayed successfully!")
 
+        # Check for 'Application Status' and visualize application status distribution
         if 'Application Status' in df_uploaded.columns:
             st.markdown("### 📊 Application Status Breakdown")
             status_counts = df_uploaded['Application Status'].value_counts()
@@ -87,6 +93,19 @@ with tab1:
             ax.axis('equal')
             st.pyplot(fig)
 
+        # Pay distribution (Histogram)
+        if 'Pay' in df_uploaded.columns:
+            st.markdown("### 💰 Pay Distribution")
+            df_uploaded['Pay Min'], df_uploaded['Pay Max'] = zip(*df_uploaded['Pay'].apply(extract_pay_range))
+            fig, ax = plt.subplots()
+            ax.hist(df_uploaded['Pay Min'].dropna(), bins=20, alpha=0.7, label='Pay Min')
+            ax.hist(df_uploaded['Pay Max'].dropna(), bins=20, alpha=0.7, label='Pay Max')
+            ax.set_xlabel("Pay (in USD)")
+            ax.set_ylabel("Number of Jobs")
+            ax.legend()
+            st.pyplot(fig)
+
+        # Application Timeline
         if 'Applied Date' in df_uploaded.columns:
             df_uploaded['Applied Date'] = pd.to_datetime(df_uploaded['Applied Date'], errors='coerce')
             df_uploaded = df_uploaded.dropna(subset=['Applied Date'])
@@ -94,6 +113,7 @@ with tab1:
             st.markdown("### 📅 Application Timeline")
             st.line_chart(timeline_data)
 
+        # Common Skills Word Cloud
         if 'Skills' in df_uploaded.columns:
             st.markdown("### ☁️ Common Skills in Applications")
             skills_text = ", ".join(df_uploaded['Skills'].dropna().astype(str))
@@ -106,6 +126,18 @@ with tab1:
             else:
                 st.info("No skills data available for word cloud.")
 
+        # Scatter plot of Pay vs. Location
+        if 'Pay' in df_uploaded.columns and 'Location' in df_uploaded.columns:
+            st.markdown("### 💼 Pay vs Location")
+            fig, ax = plt.subplots(figsize=(10, 6))
+            sns.scatterplot(data=df_uploaded, x='Location', y='Pay Min', hue='Location', size='Pay Max', sizes=(20, 200))
+            ax.set_title("Pay vs. Location")
+            ax.set_xlabel("Location")
+            ax.set_ylabel("Pay (in USD)")
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
+
+        # Job Details (Expanding view)
         if 'Job Title' in df_uploaded.columns:
             st.markdown("### 📜 Detailed Applications")
             for index, row in df_uploaded.iterrows():
@@ -121,21 +153,24 @@ with tab1:
                     st.markdown("**Skills**:")
                     st.code(row.get("Skills", ""), language="text")
 
+        st.markdown("---")
 
-# --------- TAB 2: Scraped Job Listings Dashboard ----------
-with tab2:
-    st.subheader("🔎 Scraped Job Listings Dashboard")
-    uploaded_scraped = st.file_uploader("Upload scraped jobs CSV", type=["csv"], key="scraped_jobs")
-    if uploaded_scraped:
-        df = pd.read_csv(uploaded_scraped, parse_dates=["Scraped On"])
-        df.columns = df.columns.str.strip()
-        df["Scraped On"] = pd.to_datetime(df["Scraped On"], errors="coerce")
+        # Read the same file again for scraping activity
+        df = df_uploaded.copy()
         df["Pay Min"], df["Pay Max"] = zip(*df["Pay"].apply(extract_pay_range))
 
         col1, col2, col3 = st.columns(3)
         col1.metric("📟 Total Jobs", len(df))
         col2.metric("🏢 Companies", df["Company"].nunique())
-        col3.metric("📅 Last Scraped", df["Scraped On"].max().strftime("%Y-%m-%d"))
+
+        # Ensure the 'Scraped On' column is in datetime format
+        df["Scraped On"] = pd.to_datetime(df["Scraped On"], errors='coerce')
+
+        # Check if 'Scraped On' is a valid datetime column
+        if df["Scraped On"].notna().any():
+            col3.metric("📅 Last Scraped", df["Scraped On"].max().strftime("%Y-%m-%d"))
+        else:
+            col3.metric("📅 Last Scraped", "No data available")
 
         st.sidebar.header("📍 Scraping Filters")
         selected_company = st.sidebar.multiselect("Company", df["Company"].dropna().unique(), default=df["Company"].dropna().unique())
@@ -183,8 +218,11 @@ with tab2:
                 st.markdown(f"**Work Mode**: {row['Work Mode']}")
                 st.markdown(f"**Pay**: {row['Pay']}")
                 st.markdown(f"**Application Status**: {row['Application Status']}")
+                st.markdown(f"**Location**: {row.get('Location', 'N/A')}")
+                st.markdown(f"**Followed Up**: {row.get('Follow Up', 'N/A')}")
                 st.markdown(f"**Posted/Updated**: {row.get('Posted/Updated', 'N/A')}")
                 st.markdown("**Job Description**:")
                 st.write(row.get("Job Description", "Not Available"))
                 st.markdown("**Skills**:")
                 st.code(row.get("Skills", ""), language="text")
+
