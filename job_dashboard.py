@@ -5,11 +5,14 @@ from wordcloud import WordCloud
 import seaborn as sns
 import re
 
+# Set up page config and title
 st.set_page_config(page_title="Job Tracker Dashboard", layout="wide")
 st.title("🧑‍💻 Job Tracker & Scraping Insights")
 
-# Helper function to extract numeric values from Pay column
+# Helper Functions
+
 def extract_pay_range(pay_str):
+    """Extracts min and max pay from a string."""
     if pd.isna(pay_str) or not isinstance(pay_str, str):
         return 0, 0
     pay_str = re.sub(r'[^\d\-\.]', '', pay_str)
@@ -23,7 +26,72 @@ def extract_pay_range(pay_str):
         return 0, 0
     return 0, 0
 
-# --- Sidebar for Application Summary (Tab 1) ---
+def load_data(uploaded_file):
+    """Loads the uploaded CSV file and processes columns."""
+    df = pd.read_csv(uploaded_file)
+    df.columns = df.columns.str.strip()
+    if 'Pay' in df.columns:
+        df['Pay Min'], df['Pay Max'] = zip(*df['Pay'].apply(extract_pay_range))
+    if 'Applied Date' in df.columns:
+        df['Applied Date'] = pd.to_datetime(df['Applied Date'], errors='coerce').dropna()
+    if 'Scraped On' in df.columns:
+        df["Scraped On"] = pd.to_datetime(df["Scraped On"], errors='coerce')
+    return df
+
+def generate_wordcloud(text_data):
+    """Generates a word cloud from the given text data."""
+    wordcloud = WordCloud(width=1000, height=400, background_color='white').generate(text_data)
+    fig, ax = plt.subplots(figsize=(12, 4))
+    ax.imshow(wordcloud, interpolation='bilinear')
+    ax.axis("off")
+    return fig
+
+def plot_job_status_pie_chart(status_counts):
+    """Plots a pie chart for job application status."""
+    fig, ax = plt.subplots()
+    ax.pie(status_counts, labels=status_counts.index, autopct='%1.1f%%', startangle=140)
+    ax.axis('equal')
+    return fig
+
+def plot_pay_distribution(df):
+    """Plots the pay distribution (Pay Min and Pay Max)."""
+    fig, ax = plt.subplots()
+    sns.histplot(df['Pay Min'].dropna(), bins=20, alpha=0.7, label='Pay Min', ax=ax)
+    sns.histplot(df['Pay Max'].dropna(), bins=20, alpha=0.7, label='Pay Max', ax=ax, color='orange')
+    ax.set_xlabel("Pay (in USD)")
+    ax.set_ylabel("Number of Jobs")
+    ax.legend()
+    return fig
+
+
+def plot_pay_vs_location(df):
+    """Plots Pay vs Location as a scatter plot."""
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.scatterplot(data=df, x='Location', y='Pay Min', hue='Location', size='Pay Max', sizes=(20, 200), alpha=0.7)
+    ax.set_title("Pay vs. Location")
+    ax.set_xlabel("Location")
+    ax.set_ylabel("Pay (in USD)")
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    return fig
+
+def apply_filters(df, filters):
+    """Applies filters to the dataframe."""
+    filtered_df = df.copy()
+    for col, selected in filters.items():
+        if col in filtered_df.columns:
+            if isinstance(selected, tuple):
+                if col == 'Pay Min':
+                    filtered_df = filtered_df[filtered_df[col] >= selected[0]]
+                elif col == 'Pay Max':
+                    filtered_df = filtered_df[filtered_df[col] <= selected[1]]
+                elif col == 'Scraped On':
+                    filtered_df = filtered_df[(filtered_df[col].dt.date >= selected[0]) & (filtered_df[col].dt.date <= selected[1])]
+            else:
+                filtered_df = filtered_df[filtered_df[col].isin(selected)]
+    return filtered_df
+
+# Sidebar for application summary (static input values)
 with st.sidebar:
     st.header("📌 Application Summary")
     total_applied = st.number_input("Total Jobs Applied", value=50, step=1)
@@ -38,7 +106,7 @@ with st.sidebar:
 # Tabs
 tab1, tab2 = st.tabs(["📊 Application Tracker", "🔍 Scraped Job Listings"])
 
-# --------- TAB 1: Job Tracker ----------
+# --------- TAB 1: Application Tracker ---------
 with tab1:
     st.subheader("📈 Key Metrics")
     col1, col2, col3 = st.columns(3)
@@ -64,7 +132,7 @@ with tab1:
 
     st.markdown("---")
 
-# --------- TAB 2: Scraped Job Listings Dashboard ----------
+# --------- TAB 2: Scraped Job Listings Dashboard ---------
 with tab2:
     st.subheader("🔎 Scraped Job Listings Dashboard")
 
@@ -72,61 +140,31 @@ with tab2:
     uploaded_file = st.file_uploader("Upload CSV", type=["csv"], key="app_tracker")
 
     if uploaded_file:
-        df = pd.read_csv(uploaded_file)
-        df.columns = df.columns.str.strip()
-
+        df = load_data(uploaded_file)
         st.success("CSV uploaded successfully!")
 
-        # Data Processing
-        if 'Pay' in df.columns:
-            df['Pay Min'], df['Pay Max'] = zip(*df['Pay'].apply(extract_pay_range))
-        if 'Applied Date' in df.columns:
-            df['Applied Date'] = pd.to_datetime(df['Applied Date'], errors='coerce').dropna()
-        if 'Scraped On' in df.columns:
-            df["Scraped On"] = pd.to_datetime(df["Scraped On"], errors='coerce')
-
-        # --- Visualizations ---
         st.markdown("### 📊 Data Insights")
         col1, col2, col3 = st.columns(3)
         col1.metric("📟 Total Jobs", len(df))
         col2.metric("🏢 Companies", df["Company"].nunique() if 'Company' in df.columns else "N/A")
-        col3.metric("📅 Last Scraped", df["Scraped On"].max().strftime("%Y-%m-%d") if 'Scraped On' in df.columns and df["Scraped On"].notna().any() else "No data")
+        col3.metric("📅 Last Scraped", df["Scraped On"].max().strftime("%Y-%m-%d") if 'Scraped On' in df.columns else "No data")
 
         if 'Application Status' in df.columns:
             st.markdown("#### ➡️ Application Status Breakdown")
             status_counts = df['Application Status'].value_counts()
-            fig, ax = plt.subplots()
-            ax.pie(status_counts, labels=status_counts.index, autopct='%1.1f%%', startangle=140)
-            ax.axis('equal')
-            st.pyplot(fig)
+            st.pyplot(plot_job_status_pie_chart(status_counts))
 
         if 'Pay' in df.columns:
             st.markdown("#### 💰 Pay Distribution")
-            fig, ax = plt.subplots()
-            sns.histplot(df['Pay Min'].dropna(), bins=20, alpha=0.7, label='Pay Min', ax=ax)
-            sns.histplot(df['Pay Max'].dropna(), bins=20, alpha=0.7, label='Pay Max', ax=ax, color='orange')
-            ax.set_xlabel("Pay (in USD)")
-            ax.set_ylabel("Number of Jobs")
-            ax.legend()
-            st.pyplot(fig)
-
-        if 'Applied Date' in df.columns and not df['Applied Date'].empty:
-            st.markdown("#### 📅 Application Timeline")
-            timeline_data = df.groupby(df['Applied Date'].dt.date).size()
-            st.line_chart(timeline_data)
+            st.pyplot(plot_pay_distribution(df))
 
         if 'Pay' in df.columns and 'Location' in df.columns:
             st.markdown("#### 💼 Pay vs Location")
-            fig, ax = plt.subplots(figsize=(10, 6))
-            sns.scatterplot(data=df, x='Location', y='Pay Min', hue='Location', size='Pay Max', sizes=(20, 200), alpha=0.7)
-            ax.set_title("Pay vs. Location")
-            ax.set_xlabel("Location")
-            ax.set_ylabel("Pay (in USD)")
-            plt.xticks(rotation=45, ha='right')
-            plt.tight_layout()
-            st.pyplot(fig)
+            st.pyplot(plot_pay_vs_location(df))
 
         st.markdown("---")
+
+        # --- Filter Section ---
         st.sidebar.header("⚙️ Filtering Scraped Data")
         filters = {}
         categorical_cols = ['Company', 'Application Status', 'Work Mode', 'Location', 'Employment Type']
@@ -137,7 +175,7 @@ with tab2:
 
         if 'Pay Min' in df.columns and 'Pay Max' in df.columns:
             min_pay_all = int(df["Pay Min"].min()) if not df["Pay Min"].empty else 0
-            max_pay_all = int(df["Pay Max"].max()) if not df["Pay Max"].empty else 1000000  # Some large default
+            max_pay_all = int(df["Pay Max"].max()) if not df["Pay Max"].empty else 1000000
             min_pay, max_pay = st.sidebar.slider("Select Pay Range", min_pay_all, max_pay_all, (min_pay_all, max_pay_all))
             filters['Pay Min'] = (min_pay, float('inf'))
             filters['Pay Max'] = (float('-inf'), max_pay)
@@ -148,21 +186,7 @@ with tab2:
             start_date, end_date = st.sidebar.date_input("Select Scraping Date Range", (min_date, max_date))
             filters['Scraped On'] = (start_date, end_date)
 
-        def apply_filters(df, filters):
-            filtered_df = df.copy()
-            for col, selected in filters.items():
-                if col in filtered_df.columns:
-                    if isinstance(selected, tuple):
-                        if col == 'Pay Min':
-                            filtered_df = filtered_df[filtered_df[col] >= selected[0]]
-                        elif col == 'Pay Max':
-                            filtered_df = filtered_df[filtered_df[col] <= selected[1]]
-                        elif col == 'Scraped On':
-                            filtered_df = filtered_df[(filtered_df[col].dt.date >= selected[0]) & (filtered_df[col].dt.date <= selected[1])]
-                    else:
-                        filtered_df = filtered_df[filtered_df[col].isin(selected)]
-            return filtered_df
-
+        # Apply Filters
         filtered_df = apply_filters(df, filters)
 
         st.markdown(f"### 🌟 Filtered Jobs ({len(filtered_df)})")
@@ -172,18 +196,9 @@ with tab2:
             st.markdown("#### ☁️ Filtered Skills")
             filtered_skills_text = ", ".join(filtered_df["Skills"].dropna().astype(str))
             if filtered_skills_text:
-                wordcloud_filtered = WordCloud(width=1000, height=400, background_color='white').generate(filtered_skills_text)
-                fig_filtered, ax_filtered = plt.subplots(figsize=(12, 4))
-                ax_filtered.imshow(wordcloud_filtered, interpolation='bilinear')
-                ax_filtered.axis("off")
-                st.pyplot(fig_filtered)
+                st.pyplot(generate_wordcloud(filtered_skills_text))
             else:
                 st.info("No skills data available for word cloud in the filtered dataset.")
-
-            if 'Scraped On' in filtered_df.columns and not filtered_df['Scraped On'].empty:
-                st.markdown("#### 📈 Filtered Scraping Activity Over Time")
-                timeline_data_filtered = filtered_df.groupby(filtered_df["Scraped On"].dt.date).size()
-                st.line_chart(timeline_data_filtered)
 
             st.markdown("#### 📜 Detailed Job Descriptions (Filtered)")
             for index, row in filtered_df.iterrows():
